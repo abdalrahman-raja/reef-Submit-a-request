@@ -9,20 +9,31 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const server = createServer(app);
 
-// Serve static files from dist/public in production
-const staticPath =
-  process.env.NODE_ENV === "production"
-    ? path.resolve(__dirname, "public")
-    : path.resolve(__dirname, "..", "dist", "public");
+// Middleware لبيانات الـ JSON
+app.use(express.json());
 
-app.use(express.static(staticPath));
+// إعداد المسارات الثابتة (فقط للتطوير المحلي، Vercel سيتولى الملفات الثابتة عبر الـ Rewrites)
+const staticPath = path.resolve(__dirname, "public");
+if (process.env.NODE_ENV !== "production") {
+  app.use(express.static(staticPath));
+}
 
-// Handle client-side routing - serve index.html for all routes
-app.get("*", (_req, res) => {
-  res.sendFile(path.join(staticPath, "index.html"));
+// مثال لمسار API (يمكنك إضافة مساراتك هنا)
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok" });
 });
 
-// For local development
+// في بيئة Vercel، يتم التعامل مع الملفات الثابتة عبر vercel.json
+// ولكن سنبقي على هذا المسار كاحتياط للتطوير المحلي
+app.get("*", (_req, res) => {
+  if (process.env.NODE_ENV !== "production") {
+    res.sendFile(path.join(staticPath, "index.html"));
+  } else {
+    // في Vercel، إذا وصل الطلب إلى هنا ولم يكن API، سنتركه للـ Rewrites
+    res.status(404).send("Not Found");
+  }
+});
+
 if (process.env.NODE_ENV !== "production") {
   const port = process.env.PORT || 3000;
   server.listen(port, () => {
@@ -30,5 +41,4 @@ if (process.env.NODE_ENV !== "production") {
   });
 }
 
-// Export the app for Vercel
 export default app;
